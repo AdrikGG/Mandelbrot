@@ -6,9 +6,9 @@ function App() {
   let canvas = null;
   let context: CanvasRenderingContext2D | null = null;
 
-  let plotWidth = 1600;
-  let plotHeight = 1000;
-  let iterations = 300;
+  const plotWidth = 1600;
+  const plotHeight = 1000;
+  const iterations = 300;
 
   const [xMin, setXMin] = useState(-(plotWidth / 400));
   const [yMin, setYMin] = useState(-(plotHeight / 400));
@@ -52,9 +52,9 @@ function App() {
         }
 
         // Assign color based on the number of iterations
-        const hue = (i % 255) / 255; // Normalize to the range [0, 1]
+        const hue = (i % 255) / 255;
         const saturation = 1.0;
-        const lightness = i < 255 ? 0.5 : 0; // Set background to black
+        const lightness = i < 255 ? 0.5 : 0;
 
         // Convert HSL to RGB
         const rgbColor = hslToRgb(hue, saturation, lightness);
@@ -102,6 +102,7 @@ function App() {
       return;
     }
 
+    // get mouse coordinates relative to the canvas
     const left =
       window.innerWidth > plotWidth ? (window.innerWidth - plotWidth) / 2 : 0;
     const top =
@@ -111,9 +112,11 @@ function App() {
     const mouseX = e.pageX - left;
     const mouseY = e.pageY - top;
 
+    // calculate the view width and height in the complex plane
     const compW = xMax - xMin;
     const compH = yMax - yMin;
 
+    // calculate the mouse position as a percentage from bottom left to top right
     const percentX = mouseX / plotWidth;
     const percentY = 1 - mouseY / plotHeight;
 
@@ -123,12 +126,15 @@ function App() {
     const zoomFactor = 1.05;
     const newScale = scale * zoomFactor;
 
+    // calculate new view width and height in the complex plane after zoom
     const newCompW = compW / zoomFactor;
     const newCompH = compH / zoomFactor;
 
+    // calculate the new point in the complex plane for the bottom left corner of the view
     const newXMin = xMin + (compW - newCompW) * percentX;
     const newYMin = yMin + (compH - newCompH) * (1 - percentY);
 
+    // calculate the new point in the complex plane for the top right corner of the view
     const newXMax = newXMin + newCompW;
     const newYMax = newYMin + newCompH;
 
@@ -139,10 +145,6 @@ function App() {
     setYMax(newYMax);
     setScale(newScale);
   };
-
-  // const handleZoomOut = (e: React.MouseEvent) => {
-  //   setScale(scale / 1.2);
-  // };
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'w') {
@@ -174,6 +176,12 @@ function App() {
           // onMouseUp={() => setZooming(false)}
           onKeyDown={(e) => handleKey(e)}
         ></canvas>
+        <h1>Controls</h1>
+        <div>
+          Left mouse toggles zooming. Move the mouse to continuously zoom in on
+          the cursor.
+        </div>
+        <div>Pan with wasd.</div>
       </header>
     </div>
   );
