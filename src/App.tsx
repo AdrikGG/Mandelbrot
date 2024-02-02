@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import './App.css';
 
 function App() {
+  const mouseCoordinates = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   let canvas = null;
   let context: CanvasRenderingContext2D | null = null;
@@ -16,7 +17,7 @@ function App() {
   const [yMax, setYMax] = useState(plotHeight / 400);
   const [scale, setScale] = useState(50);
 
-  const [zooming, setZooming] = useState(false);
+  const [colorMode, setColorMode] = useState(true);
 
   useEffect(() => {
     canvas = canvasRef.current;
@@ -37,8 +38,8 @@ function App() {
   };
 
   const plotMandelbrot = () => {
-    for (let x = 0; x < 400; x++) {
-      for (let y = 0; y < 250; y++) {
+    for (let x = 0; x < plotWidth / 4; x++) {
+      for (let y = 0; y < plotHeight / 4; y++) {
         const cx = xMin + x / scale;
         const cy = yMin + y / scale;
         let zx = 0,
@@ -51,18 +52,31 @@ function App() {
           zy = 2 * xt + cy;
         }
 
-        // Assign color based on the number of iterations
-        const hue = (i % 255) / 255;
-        const saturation = 1.0;
-        const lightness = i < 255 ? 0.5 : 0;
-
-        // Convert HSL to RGB
-        const rgbColor = hslToRgb(hue, saturation, lightness);
-
-        // Plot the point with the calculated color
-        plotPoint(x * 4, y * 4, rgbColor);
+        if (colorMode) {
+          color(x, y, i);
+        } else {
+          blackWhite(x, y, i);
+        }
       }
     }
+  };
+
+  const blackWhite = (x: number, y: number, i: number) => {
+    const shade = Math.round((i / iterations) * 255).toString(16);
+    plotPoint(x * 4, x * 4, '#' + shade + shade + shade);
+  };
+
+  const color = (x: number, y: number, i: number) => {
+    // Assign color based on the number of iterations
+    const hue = (i % 255) / 255;
+    const saturation = 1.0;
+    const lightness = i < 255 ? 0.5 : 0;
+
+    // Convert HSL to RGB
+    const rgbColor = hslToRgb(hue, saturation, lightness);
+
+    // Plot the point with the calculated color
+    plotPoint(x * 4, y * 4, rgbColor);
   };
 
   const hslToRgb = (h: number, s: number, l: number) => {
@@ -93,24 +107,9 @@ function App() {
     )})`;
   };
 
-  const handleZoomIn = (e: React.MouseEvent) => {
-    if (e.type === 'mousedown') {
-      setZooming(!zooming);
-    }
-
-    if (!zooming) {
-      return;
-    }
-
-    // get mouse coordinates relative to the canvas
-    const left =
-      window.innerWidth > plotWidth ? (window.innerWidth - plotWidth) / 2 : 0;
-    const top =
-      window.innerHeight > plotHeight
-        ? (window.innerHeight - plotHeight) / 2
-        : 0;
-    const mouseX = e.pageX - left;
-    const mouseY = e.pageY - top;
+  const handleZoom = (zoomIn: boolean) => {
+    const mouseX = mouseCoordinates.current.x;
+    const mouseY = mouseCoordinates.current.y;
 
     // calculate the view width and height in the complex plane
     const compW = xMax - xMin;
@@ -124,11 +123,22 @@ function App() {
     // const compY = percentY * compH + yMin;
 
     const zoomFactor = 1.05;
-    const newScale = scale * zoomFactor;
+    let newScale = 0.0;
+    if (zoomIn) {
+      newScale = scale * zoomFactor;
+    } else {
+      newScale = scale / zoomFactor;
+    }
 
     // calculate new view width and height in the complex plane after zoom
-    const newCompW = compW / zoomFactor;
-    const newCompH = compH / zoomFactor;
+    let newCompW, newCompH;
+    if (zoomIn) {
+      newCompW = compW / zoomFactor;
+      newCompH = compH / zoomFactor;
+    } else {
+      newCompW = compW * zoomFactor;
+      newCompH = compH * zoomFactor;
+    }
 
     // calculate the new point in the complex plane for the bottom left corner of the view
     const newXMin = xMin + (compW - newCompW) * percentX;
@@ -159,6 +169,12 @@ function App() {
     } else if (e.key === 'd') {
       const newXMin = xMin + 10 / scale;
       setXMin(newXMin);
+    } else if (e.key === 'c') {
+      setColorMode((prevColorMode) => !prevColorMode);
+    } else if (e.key === 'e') {
+      handleZoom(true);
+    } else if (e.key === 'q') {
+      handleZoom(false);
     }
   };
 
@@ -171,17 +187,26 @@ function App() {
           tabIndex={1}
           width={plotWidth}
           height={plotHeight}
-          onMouseDown={(e) => handleZoomIn(e)}
-          onMouseMove={(e) => handleZoomIn(e)}
-          // onMouseUp={() => setZooming(false)}
+          onMouseMove={(e) => {
+            const canvasView = canvasRef.current?.getBoundingClientRect();
+            if (canvasView) {
+              const mouseX = e.clientX - canvasView.left;
+              const mouseY = e.clientY - canvasView.top;
+              mouseCoordinates.current = { x: mouseX, y: mouseY };
+            }
+          }}
           onKeyDown={(e) => handleKey(e)}
         ></canvas>
-        <h1>Controls</h1>
-        <div>
-          Left mouse toggles zooming. Move the mouse to continuously zoom in on
-          the cursor.
+        <div className="controls">
+          <h1>Controls</h1>
+          <div>
+            <ul>
+              <li>Zoom in with e and zoom out with q.</li>
+              <li>Hover mouse over where you want to zoom.</li>
+              <li>Pan with wasd.</li>
+            </ul>
+          </div>
         </div>
-        <div>Pan with wasd.</div>
       </header>
     </div>
   );
