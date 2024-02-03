@@ -1,45 +1,116 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './App.css';
+import workerpool from 'workerpool';
 
 function App() {
   const mouseCoordinates = useRef({ x: 0, y: 0 });
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  let canvas = null;
-  let context: CanvasRenderingContext2D | null = null;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const plotWidth = 1600;
   const plotHeight = 1000;
   const iterations = 300;
+  const pixelsPerPixel = 1;
+  const initialScale = 400;
 
-  const [xMin, setXMin] = useState(-(plotWidth / 400));
-  const [yMin, setYMin] = useState(-(plotHeight / 400));
-  const [xMax, setXMax] = useState(plotWidth / 400);
-  const [yMax, setYMax] = useState(plotHeight / 400);
-  const [scale, setScale] = useState(50);
+  const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
+  const [yMin, setYMin] = useState(-(plotHeight / (initialScale * 2)));
+  const [xMax, setXMax] = useState(plotWidth / (initialScale * 2));
+  const [yMax, setYMax] = useState(plotHeight / (initialScale * 2));
+  const [scale, setScale] = useState(initialScale);
 
   const [colorMode, setColorMode] = useState(true);
 
   useEffect(() => {
-    canvas = canvasRef.current;
-    context = canvas ? canvas.getContext('2d') : null;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+
     if (context) {
-      context.fillStyle = 'black';
-      context.fillRect(0, 0, plotWidth, plotHeight);
+      contextRef.current = context;
     }
 
-    plotMandelbrot();
+    plotMandelbrotParallel();
   });
 
-  const plotPoint = (x: number, y: number, clr: string) => {
-    if (context) {
-      context.fillStyle = clr;
-      context.fillRect(x, y, 4, 4);
+  const plotMandelbrotParallel = () => {
+    const pool = workerpool.pool();
+
+    const numWorkers = 16;
+    const rowsPerWorker = Math.ceil(plotHeight / (pixelsPerPixel * numWorkers));
+    const promises = [];
+
+    for (let i = 0; i < numWorkers; i++) {
+      const startRow = i * rowsPerWorker * pixelsPerPixel;
+      const endRow = Math.min(
+        (i + 1) * rowsPerWorker * pixelsPerPixel,
+        plotHeight
+      );
+
+      promises.push(
+        pool.exec(calculateMandelbrotRow, [
+          startRow,
+          endRow,
+          plotWidth,
+          xMin,
+          yMin,
+          scale,
+          pixelsPerPixel,
+          iterations,
+          colorMode
+        ])
+      );
+    }
+
+    Promise.all(promises)
+      .then((results) => {
+        pool.terminate();
+
+        for (const workerResult of results) {
+          for (const { row, rowData } of workerResult) {
+            drawRow(row, rowData);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error('Error in worker pool:', error);
+        pool.terminate();
+      });
+  };
+
+  const drawRow = (row: number, rowData: string[]) => {
+    const canvas = canvasRef.current;
+    const context = contextRef.current;
+
+    if (canvas && context) {
+      for (let i = 0; i < rowData.length; i++) {
+        context.fillStyle = rowData[i];
+        context.fillRect(
+          i * pixelsPerPixel,
+          row,
+          pixelsPerPixel,
+          pixelsPerPixel
+        );
+      }
     }
   };
 
-  const plotMandelbrot = () => {
-    for (let x = 0; x < plotWidth / 4; x++) {
-      for (let y = 0; y < plotHeight / 4; y++) {
+  const calculateMandelbrotRow = (
+    startRow: number,
+    endRow: number,
+    plotWidth: number,
+    xMin: number,
+    yMin: number,
+    scale: number,
+    pixelsPerPixel: number,
+    iterations: number,
+    colorMode: boolean
+  ) => {
+    const rowDataArray = [];
+
+    for (let y = startRow; y < endRow; y += pixelsPerPixel) {
+      const rowData = [];
+
+      for (let x = 0; x < plotWidth; x += pixelsPerPixel) {
         const cx = xMin + x / scale;
         const cy = yMin + y / scale;
         let zx = 0,
@@ -52,59 +123,44 @@ function App() {
           zy = 2 * xt + cy;
         }
 
+        let clr = '';
         if (colorMode) {
-          color(x, y, i);
+          const hue = (i % 255) / 255;
+          const saturation = 1.0;
+          const lightness = i < 255 ? 0.5 : 0;
+
+          const hue2rgb = (p: number, q: number, t: number) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+          };
+
+          const q =
+            lightness < 0.5
+              ? lightness * (1 + saturation)
+              : lightness + saturation - lightness * saturation;
+          const p = 2 * lightness - q;
+          const r = hue2rgb(p, q, hue + 1 / 3);
+          const g = hue2rgb(p, q, hue);
+          const b = hue2rgb(p, q, hue - 1 / 3);
+
+          clr = `rgb(${Math.round(r * 255)}, ${Math.round(
+            g * 255
+          )}, ${Math.round(b * 255)})`;
         } else {
-          greyScale(x, y, i);
+          clr = Math.round((i / iterations) * 255).toString(16);
         }
+
+        rowData.push(clr);
       }
-    }
-  };
 
-  const greyScale = (x: number, y: number, i: number) => {
-    const shade = Math.round((i / iterations) * 255).toString(16);
-    plotPoint(x * 4, y * 4, '#' + shade + shade + shade);
-  };
-
-  const color = (x: number, y: number, i: number) => {
-    // Assign color based on the number of iterations
-    const hue = (i % 255) / 255;
-    const saturation = 1.0;
-    const lightness = i < 255 ? 0.5 : 0;
-
-    // Convert HSL to RGB
-    const rgbColor = hslToRgb(hue, saturation, lightness);
-
-    // Plot the point with the calculated color
-    plotPoint(x * 4, y * 4, rgbColor);
-  };
-
-  const hslToRgb = (h: number, s: number, l: number) => {
-    let r, g, b;
-
-    if (s === 0) {
-      r = g = b = l; // achromatic
-    } else {
-      const hue2rgb = (p: number, q: number, t: number) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
+      rowDataArray.push({ row: y, rowData });
     }
 
-    // Scale values to the range [0, 255]
-    return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
-      b * 255
-    )})`;
+    return rowDataArray;
   };
 
   const handleZoom = (zoomIn: boolean) => {
