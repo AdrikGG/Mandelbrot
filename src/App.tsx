@@ -55,15 +55,15 @@ function App() {
         if (colorMode) {
           color(x, y, i);
         } else {
-          blackWhite(x, y, i);
+          greyScale(x, y, i);
         }
       }
     }
   };
 
-  const blackWhite = (x: number, y: number, i: number) => {
+  const greyScale = (x: number, y: number, i: number) => {
     const shade = Math.round((i / iterations) * 255).toString(16);
-    plotPoint(x * 4, x * 4, '#' + shade + shade + shade);
+    plotPoint(x * 4, y * 4, '#' + shade + shade + shade);
   };
 
   const color = (x: number, y: number, i: number) => {
