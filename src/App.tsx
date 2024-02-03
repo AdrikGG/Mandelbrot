@@ -10,7 +10,7 @@ function App() {
   const plotWidth = 1600;
   const plotHeight = 1000;
   const iterations = 300;
-  const pixelsPerPixel = 1;
+  const pixelsPerPixel = 4;
   const initialScale = 400;
 
   const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
