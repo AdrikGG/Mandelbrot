@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './App.css';
+import { fragmentShaderSource } from './quadSingleShader';
 
 function App() {
   const mouseCoordinates = useRef({ x: 0, y: 0 });
@@ -9,6 +10,9 @@ function App() {
   const plotWidth = 1500;
   const plotHeight = 900;
   const initialScale = 400;
+
+  const [cx, setCX] = useState(-(plotWidth / (initialScale * 2)));
+  const [cy, setCY] = useState(-(plotHeight / (initialScale * 2)));
 
   const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
   const [yMin, setYMin] = useState(-(plotHeight / (initialScale * 2)));
@@ -42,71 +46,6 @@ function App() {
       attribute vec4 a_position;
       void main() {
         gl_Position = a_position;
-      }
-    `;
-
-    const fragmentShaderSource = `
-      precision highp float;
-
-      uniform vec2 u_resolution;
-      uniform vec4 u_complexRange;
-      uniform float u_scale;
-      uniform int u_colorMode;
-
-      const float maxIters = 20000.;
-      const float invMaxIters = 1. / maxIters;
-      const float escRad = 4.;
-      const float escRad2 = escRad * escRad;
-
-      vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
-        return a + b * cos(6.28318 * (c * t + d));
-      }
-      
-      vec3 paletteColor(float t) {
-        vec3 a = vec3(0.5);
-        vec3 b = vec3(0.5);
-        vec3 c = vec3(1.0);
-        vec3 d = vec3(0.0, 0.1, 0.2);
-        return palette(fract(t + 0.5), a, b, c, d);
-      }
-
-      void main() {
-        vec2 uv = (gl_FragCoord.xy - 0.5) / u_resolution;
-        vec2 c = mix(
-          vec2(u_complexRange.x, u_complexRange.y), 
-          vec2(u_complexRange.z, u_complexRange.w),
-          uv
-        );
-
-        float zx = 0.;
-        float zy = 0.;
-        float iteration = 0.;
-
-        for (float i = 0.; i < maxIters; i++) {
-          if ((zx * zx + zy * zy) < escRad2) {
-            float xt = zx * zy;
-            zx = zx * zx - zy * zy + c.x;
-            zy = 2. * xt + c.y;
-            iteration = i;
-          }
-        }
-
-        float colorValue = -1. / (0.05 * iteration + 1.) + 1.;
-
-        if (u_colorMode == 1) {
-          vec3 color = vec3(0.);
-          float distance2 = (zx * zx + zy * zy);
-          if (distance2 > escRad2) {
-            float nu = log2(log(distance2) / 2.);
-            float fractionalIteration = clamp((float(iteration + 1.) - nu) * invMaxIters, 0.0, 1.0);
-            color = paletteColor(fractionalIteration);
-          }
-
-          gl_FragColor = vec4(color, 1.0);
-        } else {
-          float brightness = iteration >= maxIters ? 0.0 : colorValue;
-          gl_FragColor = vec4(vec3(brightness), 1.0);
-        }
       }
     `;
 
@@ -154,26 +93,41 @@ function App() {
     gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(positionAttrib);
 
-    const resolutionUniform = gl.getUniformLocation(
-      shaderProgram,
-      'u_resolution'
-    );
-    gl.uniform2f(resolutionUniform, gl.canvas.width, gl.canvas.height);
+    const wUniforms = new Float32Array(2);
+    const wUniform = gl.getUniformLocation(shaderProgram, 'qs_w');
+    wUniforms[0] = gl.canvas.width;
+    wUniforms[1] = gl.canvas.width - wUniforms[0];
+    gl.uniform2fv(wUniform, wUniforms);
 
-    const complexRangeUniform = gl.getUniformLocation(
-      shaderProgram,
-      'u_complexRange'
-    );
-    gl.uniform4f(complexRangeUniform, xMin, yMin, xMax, yMax);
+    const vUniforms = new Float32Array(2);
+    const vUniform = gl.getUniformLocation(shaderProgram, 'qs_h');
+    vUniforms[0] = gl.canvas.height;
+    vUniforms[1] = gl.canvas.height - vUniforms[0];
+    gl.uniform2fv(vUniform, vUniforms);
 
-    const scaleUniform = gl.getUniformLocation(shaderProgram, 'u_scale');
-    gl.uniform1f(scaleUniform, scale);
+    const cxUniforms = new Float32Array(2);
+    const cxUniform = gl.getUniformLocation(shaderProgram, 'qs_cx');
+    cxUniforms[0] = cx;
+    cxUniforms[1] = cx - cxUniforms[0];
+    gl.uniform2fv(cxUniform, cxUniforms);
 
-    const colorModeUniform = gl.getUniformLocation(
-      shaderProgram,
-      'u_colorMode'
-    );
-    gl.uniform1i(colorModeUniform, colorMode ? 1 : 0);
+    const cyUniforms = new Float32Array(2);
+    const cyUniform = gl.getUniformLocation(shaderProgram, 'qs_cy');
+    cyUniforms[0] = cy;
+    cyUniforms[1] = cy - cyUniforms[0];
+    gl.uniform2fv(cyUniform, cyUniforms);
+
+    const zUniforms = new Float32Array(2);
+    const zUniform = gl.getUniformLocation(shaderProgram, 'qs_cy');
+    zUniforms[0] = scale;
+    zUniforms[1] = scale - zUniforms[0];
+    gl.uniform2fv(zUniform, zUniforms);
+
+    // const colorModeUniform = gl.getUniformLocation(
+    //   shaderProgram,
+    //   'u_colorMode'
+    // );
+    // gl.uniform1i(colorModeUniform, colorMode ? 1 : 0);
 
     // Draw
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -223,8 +177,8 @@ function App() {
     const percentX = mouseX / plotWidth;
     const percentY = mouseY / plotHeight;
 
-    // const compX = percentX * compW + xMin;
-    // const compY = percentY * compH + yMin;
+    const compX = percentX * compW + xMin;
+    const compY = percentY * compH + yMin;
 
     const zoomFactor = 1.05;
     let newScale = 0.0;
@@ -253,6 +207,9 @@ function App() {
     const newYMax = newYMin + newCompH;
 
     // Update state
+    setCX(compX);
+    setCY(compY);
+
     setXMin(newXMin);
     setYMin(newYMin);
     setXMax(newXMax);
