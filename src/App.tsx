@@ -91,21 +91,14 @@ function App() {
           }
         }
 
-        float colorValue = -1. / (0.05 * iteration + 1.) + 1.;
-
         if (u_colorMode == 1) {
-          vec3 color = vec3(0.);
-          float distance2 = (zx * zx + zy * zy);
-          if (distance2 > escRad2) {
-            float nu = log2(log(distance2) / 2.);
-            float fractionalIteration = clamp((float(iteration + 1.) - nu) * invMaxIters, 0.0, 1.0);
-            color = paletteColor(fractionalIteration);
-          }
-
-          gl_FragColor = vec4(color, 1.0);
+          gl_FragColor = vec4((-cos(0.025 * iteration) + 1.) / 2., 
+                              (-cos(0.08 * iteration) + 1.) / 2., 
+                              (-cos(0.12 * iteration) + 1.) / 2., 
+                              1.);
         } else {
-          float brightness = iteration >= maxIters ? 0.0 : colorValue;
-          gl_FragColor = vec4(vec3(brightness), 1.0);
+          float colorValue = -1. / (0.05 * iteration + 1.) + 1.;
+          gl_FragColor = vec4(vec3(colorValue), 1.0);
         }
       }
     `;
