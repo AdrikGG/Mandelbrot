@@ -24,7 +24,11 @@ function App() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const gl = canvas?.getContext('webgl');
+    // const gl = canvas?.getContext('webgl');
+    const gl = canvas?.getContext('webgl', {
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
 
     if (gl) {
       glRef.current = gl;

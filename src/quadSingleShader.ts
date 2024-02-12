@@ -5,7 +5,7 @@ export const fragmentShaderSource = `
 
 precision highp float;
 
-const int iterations = 20;
+const float iterations = 20.;
 const float radius = 2.;
 
 uniform vec2 qs_z;
@@ -216,7 +216,7 @@ vec3 quick_three_accum(float a, float b, float c) {
 }
 
 // inline qd_real qd_real::sloppy_add(const qd_real &a, const qd_real &b)
-vec4 qs_sloppy_add(vec4 a, vec4 b) {
+vec4 qs_add(vec4 a, vec4 b) {
   float s0, s1, s2, s3;
   float t0, t1, t2, t3;
 
@@ -275,10 +275,6 @@ vec4 qs_sloppy_add(vec4 a, vec4 b) {
 
   return renorm(s0, s1, s2, s3, t0); // return qd_real(s0, s1, s2, s3);
 }
-
-vec4 qs_add(vec4 _a, vec4 _b) {
-  return qs_sloppy_add(_a, _b);
-}  
 
 vec4 qs_mul(vec4 a, vec4 b) {
   float p0, p1, p2, p3, p4, p5;
@@ -382,7 +378,7 @@ float qs_compare(vec4 qsa, vec4 qsb) {
   }
 }
 
-float qs_mandel(void) {
+void main() {
   vec4 qs_tx = vec4(gl_FragCoord.x, vec3(0.));         // get position of current pixel
   vec4 qs_ty = vec4(gl_FragCoord.y, vec3(0.));
 
@@ -395,30 +391,26 @@ float qs_mandel(void) {
   vec4 zy = cy;
   vec4 two = vec4(2.0, vec3(0.)); 
 
+  float iteration = 0.;
+
   // no sqrt available so compare with radius^2 = 2^2 = 2*2 = 4
   vec4 e_radius = vec4(radius * radius, vec3(0.));
 
-  for (int n = 0; n < iterations; n++) {
+  for (float n = 0.; n < iterations; n++) {
     tmp = zx;
     zx = qs_add(qs_add(qs_mul(zx, zx), -qs_mul(zy, zy)), cx);
     zy = qs_add(qs_mul(qs_mul(zy, tmp), two), cy);
 
     if (qs_compare(qs_add(qs_mul(zx, zx), qs_mul(zy, zy)), e_radius) > 0.) {
       // http://linas.org/art-gallery/escape/escape.html
-      return (float(n) + 1. - log(log(length(vec2(zx.x, zy.x)))) / log(2.));
+      iteration = (n + 1. - log(log(length(vec2(zx.x, zy.x)))) / log(2.));
     }
-  }
-
-  return 0.;
-}
-
-void main() {
-  float n = qs_mandel(); 
+  } 
 
   gl_FragColor = vec4(
-    (-cos(0.025 * n) + 1.0) / 2.0, 
-    (-cos(0.08 * n) + 1.0) / 2.0, 
-    (-cos(0.12 * n) + 1.0) / 2.0, 
+    (-cos(0.025 * iteration) + 1.0) / 2.0, 
+    (-cos(0.08 * iteration) + 1.0) / 2.0, 
+    (-cos(0.12 * iteration) + 1.0) / 2.0, 
     1.0
   );
 }`;
