@@ -113,17 +113,8 @@ struct vec4 {
 };
 
 float length(vec2 x) {
-    return sqrt(x.x * x.x + x.y * x.y); 
+  return sqrt(x.x * x.x + x.y * x.y); 
 }
-
-const int iterations = 200;
-const float radius = 2.0;
-
-const vec2 qs_z;
-const vec2 qs_w;
-const vec2 qs_h;
-const vec2 qs_cx;
-const vec2 qs_cy;
 
 // inline double quick_two_sum(double a, double b, double &err)
 vec2 quick_2sum(float a, float b) {
@@ -171,9 +162,9 @@ vec3 three_sum(float a, float b, float c) {
 
 //inline void three_sum2(double &a, double &b, double &c)
 vec3 three_sum2(float a, float b, float c) {
-vec2 tmp;
-vec3 res;// = vec3(0.);
-float t1, t2, t3;       // double t1, t2, t3;
+  vec2 tmp;
+  vec3 res;// = vec3(0.);
+  float t1, t2, t3;       // double t1, t2, t3;
   tmp = two_sum(a, b); // t1 = qd::two_sum(a, b, t2);
   t1 = tmp.x;
   t2 = tmp.y;
@@ -327,7 +318,7 @@ vec3 quick_three_accum(float a, float b, float c) {
 }
 
 // inline qd_real qd_real::sloppy_add(const qd_real &a, const qd_real &b)
-vec4 qs_sloppy_add(vec4 a, vec4 b) {
+vec4 qs_add(vec4 a, vec4 b) {
   float s0, s1, s2, s3;
   float t0, t1, t2, t3;
 
@@ -387,9 +378,65 @@ vec4 qs_sloppy_add(vec4 a, vec4 b) {
   return renorm(s0, s1, s2, s3, t0); // return qd_real(s0, s1, s2, s3);
 }
 
-vec4 qs_add(vec4 _a, vec4 _b) {
-  return qs_sloppy_add(_a, _b);
-}  
+vec4 qs_subtract(vec4 a, vec4 b) {
+  float s0, s1, s2, s3;
+  float t0, t1, t2, t3;
+
+  float v0, v1, v2, v3;
+  float u0, u1, u2, u3;
+  float w0, w1, w2, w3;
+
+  vec2 tmp;
+  vec3 tmp3;
+
+  s0 = a.x - b.x;       // s0 = a[0] - b[0];
+  s1 = a.y - b.y;       // s1 = a[1] - b[1];
+  s2 = a.z - b.z;       // s2 = a[2] - b[2];
+  s3 = a.w - b.w;       // s3 = a[3] - b[3];  
+
+  v0 = s0 - a.x;        // v0 = s0 - a[0];
+  v1 = s1 - a.y;        // v1 = s1 - a[1];
+  v2 = s2 - a.z;        // v2 = s2 - a[2];
+  v3 = s3 - a.w;        // v3 = s3 - a[3];
+
+  u0 = s0 - v0;
+  u1 = s1 - v1;
+  u2 = s2 - v2;
+  u3 = s3 - v3;
+
+  w0 = a.x - u0;        // w0 = a[0] - u0;
+  w1 = a.y - u1;        // w1 = a[1] - u1;
+  w2 = a.z - u2;        // w2 = a[2] - u2;
+  w3 = a.w - u3;        // w3 = a[3] - u3; 
+
+  u0 = b.x - v0;        // u0 = b[0] - v0;
+  u1 = b.y - v1;        // u1 = b[1] - v1;
+  u2 = b.z - v2;        // u2 = b[2] - v2;
+  u3 = b.w - v3;        // u3 = b[3] - v3;
+
+  t0 = w0 + u0;
+  t1 = w1 + u1;
+  t2 = w2 + u2;
+  t3 = w3 + u3;
+
+  tmp = two_sum(s1, t0); // s1 = qd::two_sum(s1, t0, t0);
+  s1 = tmp.x;
+  t0 = tmp.y;
+
+  tmp3 = three_sum(s2, t0, t1); // qd::three_sum(s2, t0, t1);
+  s2 = tmp3.x;
+  t0 = tmp3.y;
+  t1 = tmp3.z;
+
+  tmp3 = three_sum2(s3, t0, t2); // qd::three_sum2(s3, t0, t2);
+  s3 = tmp3.x;
+  t0 = tmp3.y;
+  t2 = tmp3.z;
+
+  t0 = t0 + t1 + t3;
+
+  return renorm(s0, s1, s2, s3, t0); // return qd_real(s0, s1, s2, s3);
+}
 
 vec4 qs_mul(vec4 a, vec4 b) {
   float p0, p1, p2, p3, p4, p5;
@@ -495,9 +542,18 @@ float qs_compare(vec4 qsa, vec4 qsb) {
   }
 }
 
+const int iterations = 200;
+const float radius = 4.0;
+
+const vec2 qs_z = vec2(0.0024999999441206455, 5.587935322792781e-11);
+const vec2 qs_w = vec2(1500.0, 0.0);
+const vec2 qs_h = vec2(900.0, 0.0);
+const vec2 qs_cx = vec2(-1.875, 0.0);
+const vec2 qs_cy = vec2(-1.125, 0.0);
+
 float qs_mandel(void) {
-  vec4 qs_tx = vec4(750.0, vec3(0.));         // get position of current pixel
-  vec4 qs_ty = vec4(450.0, vec3(0.));
+  vec4 qs_tx = vec4(324.5, vec3(0.0));         // get position of current pixel
+  vec4 qs_ty = vec4(344.0, vec3(0.0));
 
   // initialize complex variable with respect to current position, zoom, ...
   vec4 cx = qs_add(qs_add(vec4(qs_cx, 0.0, 0.0), qs_mul(qs_tx, vec4(qs_z, 0.0, 0.0))), vec4(qs_w, 0.0, 0.0));
@@ -531,6 +587,12 @@ float qs_mandel(void) {
 int main() {
   float n = qs_mandel(); 
   cout << "Output: \n" << n << "\n" << endl;
+
+  vec4 s = qs_subtract(vec4(12, 0, 0, 0), vec4(3, 0, 0, 0));
+  cout << "Vec4 Subtract: \n" << s.x << s.y << s.z << s.w << endl;
+
+  vec4 a = qs_add(vec4(12, 0, 0, 0), vec4(3, 0, 0, 0));
+  cout << "Vec4 Add: \n" << s.x << s.y << s.z << s.w << endl;
 
   return 0;
 //   vec4(

@@ -95,14 +95,16 @@ function App() {
 
     const wUniforms = new Float32Array(2);
     const wUniform = gl.getUniformLocation(shaderProgram, 'qs_w');
-    wUniforms[0] = gl.canvas.width;
-    wUniforms[1] = gl.canvas.width - wUniforms[0];
+    const w = -gl.canvas.width / 2.0 / scale;
+    wUniforms[0] = w;
+    wUniforms[1] = w - wUniforms[0];
     gl.uniform2fv(wUniform, wUniforms);
 
     const vUniforms = new Float32Array(2);
     const vUniform = gl.getUniformLocation(shaderProgram, 'qs_h');
-    vUniforms[0] = gl.canvas.height;
-    vUniforms[1] = gl.canvas.height - vUniforms[0];
+    const h = -gl.canvas.height / 2.0 / scale;
+    vUniforms[0] = h;
+    vUniforms[1] = h - vUniforms[0];
     gl.uniform2fv(vUniform, vUniforms);
 
     const cxUniforms = new Float32Array(2);
@@ -118,10 +120,13 @@ function App() {
     gl.uniform2fv(cyUniform, cyUniforms);
 
     const zUniforms = new Float32Array(2);
-    const zUniform = gl.getUniformLocation(shaderProgram, 'qs_cy');
-    zUniforms[0] = scale;
-    zUniforms[1] = scale - zUniforms[0];
+    const zUniform = gl.getUniformLocation(shaderProgram, 'qs_z');
+    const invScale = 1 / scale;
+    zUniforms[0] = invScale;
+    zUniforms[1] = invScale - zUniforms[0];
     gl.uniform2fv(zUniform, zUniforms);
+
+    // console.log(wUniforms, vUniforms, cxUniforms, cyUniforms, zUniforms);
 
     // const colorModeUniform = gl.getUniformLocation(
     //   shaderProgram,

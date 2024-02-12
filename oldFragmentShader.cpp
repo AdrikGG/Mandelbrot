@@ -137,7 +137,7 @@ const float escRad = 4.0;
 const float escRad2 = escRad * escRad;
 
 float mandel(void) {
-  vec2 uv = (vec2(750.0, 450.0) - (float)0.5) / u_resolution;
+  vec2 uv = (vec2(324.5, 344) - (float)0.5) / u_resolution;
   vec2 c = mix(
     vec2(u_complexRange.x, u_complexRange.y),
     vec2(u_complexRange.z, u_complexRange.w),

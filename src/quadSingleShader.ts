@@ -5,7 +5,7 @@ export const fragmentShaderSource = `
 
 precision highp float;
 
-const int iterations = 200;
+const int iterations = 20;
 const float radius = 2.;
 
 uniform vec2 qs_z;
