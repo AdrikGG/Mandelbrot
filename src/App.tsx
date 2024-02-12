@@ -296,6 +296,36 @@ function App() {
     }
   };
 
+  const printVals = () => {
+    const mouseX = mouseCoordinates.current.x;
+    const mouseY = mouseCoordinates.current.y;
+
+    let uvX: number = (mouseX - 0.5) / plotWidth;
+    let uvY: number = (mouseY - 0.5) / plotHeight;
+    let cX: number = xMin + (xMax - xMin) * uvX;
+    let cY: number = yMin + (yMax - yMin) * uvY;
+
+    let zx = 0;
+    let zy = 0;
+    let iteration = 0;
+
+    for (let i = 0; i < 20000; i++) {
+      if (zx * zx + zy * zy < 16) {
+        const xt = zx * zy;
+        zx = zx * zx - zy * zy + cX;
+        zy = 2 * xt + cY;
+        iteration = i;
+      }
+    }
+
+    console.log(`
+      Mouse Coords: {${mouseX}, ${mouseY}}, 
+      Resolution: {${plotWidth}, ${plotHeight}}, 
+      Range: {(${xMin}, ${yMin}), (${xMax}, ${yMax})}
+      N: ${iteration}
+    `);
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -314,6 +344,7 @@ function App() {
             }
           }}
           onKeyDown={(e) => handleKey(e)}
+          onClick={printVals}
         ></canvas>
         <div className="controls">
           <h1>Controls</h1>
