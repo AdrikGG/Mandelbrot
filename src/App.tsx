@@ -71,7 +71,7 @@ function App() {
       }
 
       void main() {
-        vec2 uv = (gl_FragCoord.xy - 0.5) / u_resolution;
+        vec2 uv = (gl_FragCoord.xy - 0.5) * u_resolution;
         vec2 c = mix(
           vec2(u_complexRange.x, u_complexRange.y), 
           vec2(u_complexRange.z, u_complexRange.w),
@@ -151,7 +151,7 @@ function App() {
       shaderProgram,
       'u_resolution'
     );
-    gl.uniform2f(resolutionUniform, gl.canvas.width, gl.canvas.height);
+    gl.uniform2f(resolutionUniform, 1 / gl.canvas.width, 1 / gl.canvas.height);
 
     const complexRangeUniform = gl.getUniformLocation(
       shaderProgram,
