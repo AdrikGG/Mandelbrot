@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './App.css';
-import { fragmentShaderSource } from './quadSingleShader';
+import { fragmentShaderSource } from './doubleSingleShader';
 
 function App() {
   const mouseCoordinates = useRef({ x: 0, y: 0 });
@@ -11,14 +11,14 @@ function App() {
   const plotHeight = 900;
   const initialScale = 400;
 
-  const [cx, setCX] = useState(-(plotWidth / (initialScale * 2)));
-  const [cy, setCY] = useState(-(plotHeight / (initialScale * 2)));
-
   const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
   const [yMin, setYMin] = useState(-(plotHeight / (initialScale * 2)));
   const [xMax, setXMax] = useState(plotWidth / (initialScale * 2));
   const [yMax, setYMax] = useState(plotHeight / (initialScale * 2));
   const [scale, setScale] = useState(initialScale);
+
+  const [cx, setCX] = useState((xMin + xMax) / 2);
+  const [cy, setCY] = useState((yMin + yMax) / 2);
 
   const [colorMode, setColorMode] = useState(true);
 
@@ -97,38 +97,72 @@ function App() {
     gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(positionAttrib);
 
-    const wUniforms = new Float32Array(2);
-    const wUniform = gl.getUniformLocation(shaderProgram, 'qs_w');
-    const w = -gl.canvas.width / 2.0 / scale;
-    wUniforms[0] = w;
-    wUniforms[1] = w - wUniforms[0];
-    gl.uniform2fv(wUniform, wUniforms);
+    const complexStartUniform = gl.getUniformLocation(
+      shaderProgram,
+      'u_complexStart'
+    );
+    const complexStartUniforms = new Float32Array(4);
+    const csx = xMin;
+    complexStartUniforms[0] = csx;
+    complexStartUniforms[1] = csx - complexStartUniforms[0];
+    const csy = yMin;
+    complexStartUniforms[2] = csy;
+    complexStartUniforms[3] = csy - complexStartUniforms[2];
+    gl.uniform4fv(complexStartUniform, complexStartUniforms);
 
-    const vUniforms = new Float32Array(2);
-    const vUniform = gl.getUniformLocation(shaderProgram, 'qs_h');
-    const h = -gl.canvas.height / 2.0 / scale;
-    vUniforms[0] = h;
-    vUniforms[1] = h - vUniforms[0];
-    gl.uniform2fv(vUniform, vUniforms);
+    const complexEndUniform = gl.getUniformLocation(
+      shaderProgram,
+      'u_complexEnd'
+    );
+    const complexEndUniforms = new Float32Array(4);
+    const cex = xMin;
+    complexEndUniforms[0] = cex;
+    complexEndUniforms[1] = cex - complexEndUniforms[0];
+    const cey = yMin;
+    complexEndUniforms[2] = cey;
+    complexEndUniforms[3] = cey - complexEndUniforms[2];
+    gl.uniform4fv(complexEndUniform, complexEndUniforms);
 
-    const cxUniforms = new Float32Array(2);
-    const cxUniform = gl.getUniformLocation(shaderProgram, 'qs_cx');
-    cxUniforms[0] = cx;
-    cxUniforms[1] = cx - cxUniforms[0];
-    gl.uniform2fv(cxUniform, cxUniforms);
+    const widthUniforms = new Float32Array(2);
+    const widthUniform = gl.getUniformLocation(shaderProgram, 'u_width');
+    const w = 1 / gl.canvas.width;
+    widthUniforms[0] = w;
+    widthUniforms[1] = w - widthUniforms[0];
+    gl.uniform2fv(widthUniform, widthUniforms);
 
-    const cyUniforms = new Float32Array(2);
-    const cyUniform = gl.getUniformLocation(shaderProgram, 'qs_cy');
-    cyUniforms[0] = cy;
-    cyUniforms[1] = cy - cyUniforms[0];
-    gl.uniform2fv(cyUniform, cyUniforms);
+    const heightUniforms = new Float32Array(2);
+    const heightUniform = gl.getUniformLocation(shaderProgram, 'u_height');
+    const h = 1 / gl.canvas.height;
+    heightUniforms[0] = h;
+    heightUniforms[1] = h - heightUniforms[0];
+    gl.uniform2fv(heightUniform, heightUniforms);
 
-    const zUniforms = new Float32Array(2);
-    const zUniform = gl.getUniformLocation(shaderProgram, 'qs_z');
-    const invScale = 1 / scale;
-    zUniforms[0] = invScale;
-    zUniforms[1] = invScale - zUniforms[0];
-    gl.uniform2fv(zUniform, zUniforms);
+    // console.log(widthUniforms, heightUniforms);
+
+    // const cxUniforms = new Float32Array(2);
+    // const cx0Uniform = gl.getUniformLocation(shaderProgram, 'ds_cx0');
+    // const cx1Uniform = gl.getUniformLocation(shaderProgram, 'ds_cx1');
+    // cxUniforms[0] = cx;
+    // cxUniforms[1] = cx - cxUniforms[0];
+    // gl.uniform1f(cx0Uniform, cxUniforms[0]);
+    // gl.uniform1f(cx1Uniform, cxUniforms[1]);
+
+    // const cyUniforms = new Float32Array(2);
+    // const cy0Uniform = gl.getUniformLocation(shaderProgram, 'ds_cy0');
+    // const cy1Uniform = gl.getUniformLocation(shaderProgram, 'ds_cy1');
+    // cyUniforms[0] = cy;
+    // cyUniforms[1] = cy - cyUniforms[0];
+    // gl.uniform1f(cy0Uniform, cyUniforms[0]);
+    // gl.uniform1f(cy1Uniform, cyUniforms[1]);
+
+    // const zUniforms = new Float32Array(2);
+    // const z0Uniform = gl.getUniformLocation(shaderProgram, 'ds_z0');
+    // const z1Uniform = gl.getUniformLocation(shaderProgram, 'ds_z1');
+    // const invScale = 1 / scale;
+    // zUniforms[0] = invScale;
+    // zUniforms[1] = invScale - zUniforms[0];
+    // gl.uniform1f(z0Uniform, zUniforms[0]);
+    // gl.uniform1f(z1Uniform, zUniforms[1]);
 
     // console.log(wUniforms, vUniforms, cxUniforms, cyUniforms, zUniforms);
 

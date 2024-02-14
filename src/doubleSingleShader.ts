@@ -1,83 +1,19 @@
-// emulated quadruple precision GLSL library
-// created by Henry thasler (thasler.org/blog)
-// based on the QD library (http://crd-legacy.lbl.gov/~dhbailey/mpdist/)
+export const fragmentShaderSource = `
+// GLSL Mandelbrot Shader inspired by Henry Thasler (www.thasler.org/blog)
+// Double precision emulation functions written by Henry Thasler
 
-#include <cmath>
-#include <iostream>
+precision highp float;
 
-using namespace std;
+const float iterations = 2000.;
+const vec2 e_radius = vec2(4.);
 
-// precision highp float;
+uniform vec2 u_width;
+uniform vec2 u_height;
+uniform vec4 u_complexStart; // xMin, yMin
+uniform vec4 u_complexEnd;   // xMax, yMax
 
-struct vec2 {
-  float x;
-  float y;
-
-  vec2(float x, float y) {
-    this->x = x;
-    this->y = y;
-  }
-
-  vec2() {
-    this->x = 0.;
-    this->y = 0.;
-  }
-};
-
-struct vec4 {
-  float x;
-  float y;
-  float z;
-  float w;
-
-  vec2 xy;
-  vec2 zw;
-
-  vec4(float x, float y, float z, float w) {
-    this->x = x;
-    this->y = y;
-    this->z = z;
-    this->w = w;
-
-    this->xy = vec2(this->x, this->y);
-    this->zw = vec2(this->z, this->w);
-  }
-
-  vec4(vec2 xy, float z, float w) {
-    this->x = xy.x;
-    this->y = xy.y;
-    this->z = z;
-    this->w = w;
-
-    this->xy = vec2(this->x, this->y);
-    this->zw = vec2(this->z, this->w);
-  }
-
-  vec4(vec2 xy, vec2 zw) {
-    this->x = xy.x;
-    this->y = xy.y;
-    this->z = zw.x;
-    this->w = zw.y;
-
-    this->xy = vec2(this->x, this->y);
-    this->zw = vec2(this->z, this->w);
-  }
-
-  vec4() {
-    this->x = 0.;
-    this->y = 0.;
-    this->z = 0.;
-    this->w = 0.;
-
-    this->xy = vec2(this->x, this->y);
-    this->zw = vec2(this->z, this->w);
-  }
-
-  vec4 operator-() const {
-    return vec4(-x, -y, -z, -w);
-  }
-};
-
+// Emulation based on Fortran-90 double-single package. 
+// See http://crd.lbl.gov/~dhbailey/mpdist/
 // Add: res = ds_add(a, b) => res = a + b
 vec2 ds_add (vec2 dsa, vec2 dsb) {
   vec2 dsc;
@@ -161,16 +97,7 @@ vec2 ds_set(float a) {
   return z;
 }
 
-const int iterations = 200;
-const vec2 e_radius = ds_set(4.0);
-
-const vec2 u_width = vec2(0.0006666666595265269, 7.140139608036167e-12);
-const vec2 u_height = vec2(0.0011111111380159855, -2.690487416190379e-11);
-const vec4 u_complexStart = vec4(-1.875, 0.0, -1.125, 0.0);
-const vec4 u_complexEnd = vec4(1.875, 0.0, 1.125, 0.0);
-
 float emandel2(void) {
-  vec2 gl_FragCoord = vec2(875.612472, 250);
   vec2 px = ds_mul(ds_set(gl_FragCoord.x), u_width);
   vec2 py = ds_mul(ds_set(gl_FragCoord.y), u_height);
 
@@ -193,36 +120,15 @@ float emandel2(void) {
   return iteration;
 }
 
-float mandel(void) {
-  vec2 c = vec2(0.31403118, -0.5);
-  float zx = 0.0;
-  float zy = 0.0;
-  float iteration = 0.0;
+void main() {
+  float iteration = emandel2();
 
-  for (float i = 0.0; i < iterations; i++) {
-    if ((zx * zx + zy * zy) < 4.0) {
-      float xt = zx * zy;
-      zx = zx * zx - zy * zy + c.x;
-      zy = 2.0 * xt + c.y;
-      iteration = i;
-    }
+  if (iteration == iterations) {
+    gl_FragColor = vec4(100.0, 0.0, 0.0, 1.0);  // Set color for points outside the Mandelbrot set
+  } else {
+    float normalizedIteration = iteration / iterations;
+  
+    gl_FragColor = vec4(normalizedIteration, normalizedIteration, normalizedIteration, 1.0);
   }
-
-  return iteration;
 }
-
-int main() {
-  float m = mandel(); 
-  cout << "mandel Output: \n" << m << "\n" << endl;
-
-  float n = emandel2(); 
-  cout << "emandel2 Output: \n" << n << "\n" << endl;
-
-  return 0;
-//   vec4(
-//     (-cos(0.025 * n) + 1.0) / 2., 
-//     (-cos(0.08 * n) + 1.0) / 2., 
-//     (-cos(0.12 * n) + 1.0) / 2., 
-//     1.
-//   );
-};
+`;
