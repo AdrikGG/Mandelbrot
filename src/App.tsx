@@ -8,7 +8,7 @@ function App() {
 
   const plotWidth = 1500;
   const plotHeight = 900;
-  const initialScale = 400;
+  const initialScale = 300;
 
   const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
   const [yMin, setYMin] = useState(-(plotHeight / (initialScale * 2)));
@@ -54,21 +54,7 @@ function App() {
       uniform int u_colorMode;
 
       const float maxIters = 20000.;
-      const float invMaxIters = 1. / maxIters;
-      const float escRad = 4.;
-      const float escRad2 = escRad * escRad;
-
-      vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
-        return a + b * cos(6.28318 * (c * t + d));
-      }
-      
-      vec3 paletteColor(float t) {
-        vec3 a = vec3(0.5);
-        vec3 b = vec3(0.5);
-        vec3 c = vec3(1.0);
-        vec3 d = vec3(0.0, 0.1, 0.2);
-        return palette(fract(t + 0.5), a, b, c, d);
-      }
+      const float escRad2 = 16.;
 
       void main() {
         vec2 uv = (gl_FragCoord.xy - 0.5) * u_resolution;
@@ -280,19 +266,6 @@ function App() {
       handleZoom(true);
     } else if (e.key === 'q') {
       handleZoom(false);
-    } else if (e.key === 'p') {
-      console.log(
-        'Frame in complex coordinates: (' +
-          xMin +
-          ', ' +
-          yMin +
-          '), ' +
-          xMax +
-          ', ' +
-          yMax +
-          ')',
-        'Scale: ' + scale
-      );
     }
   };
 
@@ -321,8 +294,9 @@ function App() {
     console.log(`
       Mouse Coords: {${mouseX}, ${mouseY}}, 
       Resolution: {${plotWidth}, ${plotHeight}}, 
-      Range: {(${xMin}, ${yMin}), (${xMax}, ${yMax})}
-      N: ${iteration}
+      Range: {(${xMin}, ${yMin}), (${xMax}, ${yMax})},
+      N: ${iteration},
+      Scale / Zoom: ${scale}
     `);
   };
 
