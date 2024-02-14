@@ -17,9 +17,6 @@ function App() {
   const [yMax, setYMax] = useState(plotHeight / (initialScale * 2));
   const [scale, setScale] = useState(initialScale);
 
-  const [cx, setCX] = useState((xMin + xMax) / 2);
-  const [cy, setCY] = useState((yMin + yMax) / 2);
-
   const [colorMode, setColorMode] = useState(true);
 
   useEffect(() => {
@@ -97,31 +94,45 @@ function App() {
     gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(positionAttrib);
 
-    const complexStartUniform = gl.getUniformLocation(
+    const complexRMinUniform = gl.getUniformLocation(
       shaderProgram,
-      'u_complexStart'
+      'u_complexRMin'
     );
-    const complexStartUniforms = new Float32Array(4);
+    const complexRMinUniforms = new Float32Array(2);
     const csx = xMin;
-    complexStartUniforms[0] = csx;
-    complexStartUniforms[1] = csx - complexStartUniforms[0];
-    const csy = yMin;
-    complexStartUniforms[2] = csy;
-    complexStartUniforms[3] = csy - complexStartUniforms[2];
-    gl.uniform4fv(complexStartUniform, complexStartUniforms);
+    complexRMinUniforms[0] = csx;
+    complexRMinUniforms[1] = csx - complexRMinUniforms[0];
+    gl.uniform2fv(complexRMinUniform, complexRMinUniforms);
 
-    const complexEndUniform = gl.getUniformLocation(
+    const complexIMinUniform = gl.getUniformLocation(
       shaderProgram,
-      'u_complexEnd'
+      'u_complexIMin'
     );
-    const complexEndUniforms = new Float32Array(4);
-    const cex = xMin;
-    complexEndUniforms[0] = cex;
-    complexEndUniforms[1] = cex - complexEndUniforms[0];
-    const cey = yMin;
-    complexEndUniforms[2] = cey;
-    complexEndUniforms[3] = cey - complexEndUniforms[2];
-    gl.uniform4fv(complexEndUniform, complexEndUniforms);
+    const complexIMinUniforms = new Float32Array(2);
+    const csy = yMin;
+    complexIMinUniforms[0] = csy;
+    complexIMinUniforms[1] = csy - complexIMinUniforms[0];
+    gl.uniform2fv(complexIMinUniform, complexIMinUniforms);
+
+    const complexRMaxUniform = gl.getUniformLocation(
+      shaderProgram,
+      'u_complexRMax'
+    );
+    const complexRMaxUniforms = new Float32Array(2);
+    const cex = xMax;
+    complexRMaxUniforms[0] = cex;
+    complexRMaxUniforms[1] = cex - complexRMaxUniforms[0];
+    gl.uniform2fv(complexRMaxUniform, complexRMaxUniforms);
+
+    const complexIMaxUniform = gl.getUniformLocation(
+      shaderProgram,
+      'u_complexIMax'
+    );
+    const complexIMaxUniforms = new Float32Array(2);
+    const cey = yMax;
+    complexIMaxUniforms[0] = cey;
+    complexIMaxUniforms[1] = cey - complexIMaxUniforms[0];
+    gl.uniform2fv(complexIMaxUniform, complexIMaxUniforms);
 
     const widthUniforms = new Float32Array(2);
     const widthUniform = gl.getUniformLocation(shaderProgram, 'u_width');
@@ -220,8 +231,8 @@ function App() {
     const percentX = mouseX / plotWidth;
     const percentY = mouseY / plotHeight;
 
-    const compX = percentX * compW + xMin;
-    const compY = percentY * compH + yMin;
+    // const compX = percentX * compW + xMin;
+    // const compY = percentY * compH + yMin;
 
     const zoomFactor = 1.05;
     let newScale = 0.0;
@@ -250,9 +261,6 @@ function App() {
     const newYMax = newYMin + newCompH;
 
     // Update state
-    setCX(compX);
-    setCY(compY);
-
     setXMin(newXMin);
     setYMin(newYMin);
     setXMax(newXMax);

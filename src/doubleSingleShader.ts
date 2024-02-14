@@ -4,13 +4,17 @@ export const fragmentShaderSource = `
 
 precision highp float;
 
-const float iterations = 2000.;
+const float iterations = 200.;
 const vec2 e_radius = vec2(4.);
 
 uniform vec2 u_width;
 uniform vec2 u_height;
-uniform vec4 u_complexStart; // xMin, yMin
-uniform vec4 u_complexEnd;   // xMax, yMax
+
+uniform vec2 u_complexRMin; //xMin
+uniform vec2 u_complexIMin; // yMin
+
+uniform vec2 u_complexRMax; // xMax
+uniform vec2 u_complexIMax; // yMax
 
 // Emulation based on Fortran-90 double-single package. 
 // See http://crd.lbl.gov/~dhbailey/mpdist/
@@ -101,8 +105,8 @@ float emandel2(void) {
   vec2 px = ds_mul(ds_set(gl_FragCoord.x), u_width);
   vec2 py = ds_mul(ds_set(gl_FragCoord.y), u_height);
 
-  vec2 cx = ds_add(ds_mul(px, ds_sub(u_complexEnd.xy, u_complexStart.xy)), u_complexStart.xy);
-  vec2 cy = ds_add(ds_mul(py, ds_sub(u_complexEnd.zw, u_complexStart.zw)), u_complexStart.zw);
+  vec2 cx = ds_add(ds_mul(px, ds_sub(u_complexRMax, u_complexRMin)), u_complexRMin);
+  vec2 cy = ds_add(ds_mul(py, ds_sub(u_complexIMax, u_complexIMin)), u_complexIMin);
 
   vec2 zx = ds_set(0.0);
   vec2 zy = ds_set(0.0);
@@ -121,14 +125,12 @@ float emandel2(void) {
 }
 
 void main() {
-  float iteration = emandel2();
+  float n = emandel2();
 
-  if (iteration == iterations) {
-    gl_FragColor = vec4(100.0, 0.0, 0.0, 1.0);  // Set color for points outside the Mandelbrot set
-  } else {
-    float normalizedIteration = iteration / iterations;
-  
-    gl_FragColor = vec4(normalizedIteration, normalizedIteration, normalizedIteration, 1.0);
-  }
+  gl_FragColor = 
+      vec4((-cos(0.025 * n) + 1.0) / 2., 
+           (-cos(0.08 * n) + 1.0) / 2., 
+           (-cos(0.12 * n) + 1.0) / 2., 
+           1.);
 }
 `;
