@@ -2,15 +2,17 @@ import React, { useRef, useEffect, useState } from 'react';
 import './App.css';
 import workerpool from 'workerpool';
 
+const pool = workerpool.pool();
+
 function App() {
   const mouseCoordinates = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
-  const plotWidth = 1600;
-  const plotHeight = 1000;
-  const iterations = 300;
-  const pixelsPerPixel = 4;
+  const plotWidth = 1500;
+  const plotHeight = 900;
+  const iterations = 2000;
+  const pixelsPerPixel = 3;
   const initialScale = 400;
 
   const [xMin, setXMin] = useState(-(plotWidth / (initialScale * 2)));
@@ -20,6 +22,8 @@ function App() {
   const [scale, setScale] = useState(initialScale);
 
   const [colorMode, setColorMode] = useState(true);
+
+  let workInProgress = false;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,9 +37,7 @@ function App() {
   });
 
   const plotMandelbrotParallel = () => {
-    const pool = workerpool.pool();
-
-    const numWorkers = 16;
+    const numWorkers = 11;
     const rowsPerWorker = Math.ceil(plotHeight / (pixelsPerPixel * numWorkers));
     const promises = [];
 
@@ -46,6 +48,7 @@ function App() {
         plotHeight
       );
 
+      workInProgress = true;
       promises.push(
         pool.exec(calculateMandelbrotRow, [
           startRow,
@@ -63,13 +66,14 @@ function App() {
 
     Promise.all(promises)
       .then((results) => {
-        pool.terminate();
-
+        const rowImageDataArray: ImageData[] = [];
         for (const workerResult of results) {
-          for (const { row, rowData } of workerResult) {
-            drawRow(row, rowData);
-          }
+          for (const rowImageData of workerResult)
+            rowImageDataArray.push(rowImageData);
         }
+
+        drawBatchRows(rowImageDataArray);
+        workInProgress = false;
       })
       .catch((error) => {
         console.error('Error in worker pool:', error);
@@ -77,20 +81,23 @@ function App() {
       });
   };
 
-  const drawRow = (row: number, rowData: string[]) => {
-    const canvas = canvasRef.current;
+  const drawBatchRows = (imageDataArray: ImageData[]) => {
     const context = contextRef.current;
 
-    if (canvas && context) {
-      for (let i = 0; i < rowData.length; i++) {
-        context.fillStyle = rowData[i];
-        context.fillRect(
-          i * pixelsPerPixel,
-          row,
-          pixelsPerPixel,
-          pixelsPerPixel
-        );
+    if (context) {
+      const totalHeight = imageDataArray.length;
+      const totalImageData = new ImageData(plotWidth, totalHeight);
+      const totalData = totalImageData.data;
+
+      for (let i = 0; i < totalHeight; i++) {
+        const imageData = imageDataArray[i];
+        const data = imageData.data;
+        const totalIndex = i * plotWidth * 4;
+
+        totalData.set(data, totalIndex);
       }
+
+      context.putImageData(totalImageData, 0, 0);
     }
   };
 
@@ -105,62 +112,58 @@ function App() {
     iterations: number,
     colorMode: boolean
   ) => {
-    const rowDataArray = [];
+    const imageDataArray: ImageData[] = [];
+    const colorValues = new Uint8ClampedArray(3);
 
     for (let y = startRow; y < endRow; y += pixelsPerPixel) {
-      const rowData = [];
+      const rowData = new Uint8ClampedArray(plotWidth * 4);
+      const cy = yMin + y / scale;
 
       for (let x = 0; x < plotWidth; x += pixelsPerPixel) {
         const cx = xMin + x / scale;
-        const cy = yMin + y / scale;
-        let zx = 0,
-          zy = 0;
+        let zx = 0;
+        let zy = 0;
 
         let i = 0;
-        for (i; i < iterations && zx * zx + zy * zy < 4; i++) {
+        for (i; i < iterations && zx * zx + zy * zy < 16; i++) {
           const xt = zx * zy;
           zx = zx * zx - zy * zy + cx;
           zy = 2 * xt + cy;
         }
 
-        let clr = '';
+        if (i === iterations) i = 0;
+
         if (colorMode) {
-          const hue = (i % 255) / 255;
-          const saturation = 1.0;
-          const lightness = i < 255 ? 0.5 : 0;
-
-          const hue2rgb = (p: number, q: number, t: number) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1 / 6) return p + (q - p) * 6 * t;
-            if (t < 1 / 2) return q;
-            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-          };
-
-          const q =
-            lightness < 0.5
-              ? lightness * (1 + saturation)
-              : lightness + saturation - lightness * saturation;
-          const p = 2 * lightness - q;
-          const r = hue2rgb(p, q, hue + 1 / 3);
-          const g = hue2rgb(p, q, hue);
-          const b = hue2rgb(p, q, hue - 1 / 3);
-
-          clr = `rgb(${Math.round(r * 255)}, ${Math.round(
-            g * 255
-          )}, ${Math.round(b * 255)})`;
+          colorValues[0] = Math.floor(((-Math.cos(0.025 * i) + 1) / 2) * 255);
+          colorValues[1] = Math.floor(((-Math.cos(0.08 * i) + 1) / 2) * 255);
+          colorValues[2] = Math.floor(((-Math.cos(0.12 * i) + 1) / 2) * 255);
         } else {
-          clr = Math.round((i / iterations) * 255).toString(16);
+          const grayscaleValue = Math.round((i / iterations) * 255);
+          colorValues[0] = colorValues[1] = colorValues[2] = grayscaleValue;
         }
 
-        rowData.push(clr);
+        for (let n = 0; n < pixelsPerPixel; n++) {
+          const offset = (x + n) * 4;
+          rowData[offset] = colorValues[0];
+          rowData[offset + 1] = colorValues[1];
+          rowData[offset + 2] = colorValues[2];
+          rowData[offset + 3] = 255;
+        }
       }
 
-      rowDataArray.push({ row: y, rowData });
+      const pixelData = new Uint8ClampedArray(rowData);
+      const imageData = new ImageData(
+        pixelData,
+        plotWidth / pixelsPerPixel,
+        pixelsPerPixel
+      );
+
+      for (let k = 0; k < pixelsPerPixel; k++) {
+        imageDataArray.push(imageData);
+      }
     }
 
-    return rowDataArray;
+    return imageDataArray;
   };
 
   const handleZoom = (zoomIn: boolean) => {
@@ -213,18 +216,27 @@ function App() {
   };
 
   const handleKey = (e: React.KeyboardEvent) => {
+    if (workInProgress) return;
     if (e.key === 'w') {
       const newYMin = yMin - 10 / scale;
+      const newYMax = yMax - 10 / scale;
       setYMin(newYMin);
+      setYMax(newYMax);
     } else if (e.key === 'a') {
       const newXMin = xMin - 10 / scale;
+      const newXMax = xMax - 10 / scale;
       setXMin(newXMin);
+      setXMax(newXMax);
     } else if (e.key === 's') {
       const newYMin = yMin + 10 / scale;
+      const newYMax = yMax + 10 / scale;
       setYMin(newYMin);
+      setYMax(newYMax);
     } else if (e.key === 'd') {
       const newXMin = xMin + 10 / scale;
+      const newXMax = xMax + 10 / scale;
       setXMin(newXMin);
+      setXMax(newXMax);
     } else if (e.key === 'c') {
       setColorMode((prevColorMode) => !prevColorMode);
     } else if (e.key === 'e') {
