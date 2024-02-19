@@ -1,213 +1,79 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './App.css';
+import keyQ from './icons/icons8-q-key-50.png';
+import keyE from './icons/icons8-e-key-50.png';
+import keyW from './icons/icons8-w-key-50.png';
+import keyA from './icons/icons8-a-key-50.png';
+import keyS from './icons/icons8-s-key-50.png';
+import keyD from './icons/icons8-d-key-50.png';
+import keyC from './icons/icons8-c-key-50.png';
+
+import Sequential from './versions/Sequential';
+import CPUParallel from './versions/CPUParallel';
+import GPUParallel from './versions/GPUParallel';
 
 function App() {
-  const mouseCoordinates = useRef({ x: 0, y: 0 });
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  let canvas = null;
-  let context: CanvasRenderingContext2D | null = null;
+  const [tab, setTab] = useState('sequential');
 
-  const plotWidth = 1600;
-  const plotHeight = 1000;
-  const iterations = 300;
-
-  const [xMin, setXMin] = useState(-(plotWidth / 400));
-  const [yMin, setYMin] = useState(-(plotHeight / 400));
-  const [xMax, setXMax] = useState(plotWidth / 400);
-  const [yMax, setYMax] = useState(plotHeight / 400);
-  const [scale, setScale] = useState(50);
-
-  const [colorMode, setColorMode] = useState(true);
-
-  useEffect(() => {
-    canvas = canvasRef.current;
-    context = canvas ? canvas.getContext('2d') : null;
-    if (context) {
-      context.fillStyle = 'black';
-      context.fillRect(0, 0, plotWidth, plotHeight);
-    }
-
-    plotMandelbrot();
-  });
-
-  const plotPoint = (x: number, y: number, clr: string) => {
-    if (context) {
-      context.fillStyle = clr;
-      context.fillRect(x, y, 4, 4);
-    }
-  };
-
-  const plotMandelbrot = () => {
-    for (let x = 0; x < plotWidth / 4; x++) {
-      for (let y = 0; y < plotHeight / 4; y++) {
-        const cx = xMin + x / scale;
-        const cy = yMin + y / scale;
-        let zx = 0,
-          zy = 0;
-
-        let i = 0;
-        for (i; i < iterations && zx * zx + zy * zy < 4; i++) {
-          const xt = zx * zy;
-          zx = zx * zx - zy * zy + cx;
-          zy = 2 * xt + cy;
-        }
-
-        if (colorMode) {
-          color(x, y, i);
-        } else {
-          greyScale(x, y, i);
-        }
-      }
-    }
-  };
-
-  const greyScale = (x: number, y: number, i: number) => {
-    const shade = Math.round((i / iterations) * 255).toString(16);
-    plotPoint(x * 4, y * 4, '#' + shade + shade + shade);
-  };
-
-  const color = (x: number, y: number, i: number) => {
-    // Assign color based on the number of iterations
-    const hue = (i % 255) / 255;
-    const saturation = 1.0;
-    const lightness = i < 255 ? 0.5 : 0;
-
-    // Convert HSL to RGB
-    const rgbColor = hslToRgb(hue, saturation, lightness);
-
-    // Plot the point with the calculated color
-    plotPoint(x * 4, y * 4, rgbColor);
-  };
-
-  const hslToRgb = (h: number, s: number, l: number) => {
-    let r, g, b;
-
-    if (s === 0) {
-      r = g = b = l; // achromatic
-    } else {
-      const hue2rgb = (p: number, q: number, t: number) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
-    }
-
-    // Scale values to the range [0, 255]
-    return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
-      b * 255
-    )})`;
-  };
-
-  const handleZoom = (zoomIn: boolean) => {
-    const mouseX = mouseCoordinates.current.x;
-    const mouseY = mouseCoordinates.current.y;
-
-    // calculate the view width and height in the complex plane
-    const compW = xMax - xMin;
-    const compH = yMax - yMin;
-
-    // calculate the mouse position as a percentage from bottom left to top right
-    const percentX = mouseX / plotWidth;
-    const percentY = 1 - mouseY / plotHeight;
-
-    // const compX = percentX * compW + xMin;
-    // const compY = percentY * compH + yMin;
-
-    const zoomFactor = 1.05;
-    let newScale = 0.0;
-    if (zoomIn) {
-      newScale = scale * zoomFactor;
-    } else {
-      newScale = scale / zoomFactor;
-    }
-
-    // calculate new view width and height in the complex plane after zoom
-    let newCompW, newCompH;
-    if (zoomIn) {
-      newCompW = compW / zoomFactor;
-      newCompH = compH / zoomFactor;
-    } else {
-      newCompW = compW * zoomFactor;
-      newCompH = compH * zoomFactor;
-    }
-
-    // calculate the new point in the complex plane for the bottom left corner of the view
-    const newXMin = xMin + (compW - newCompW) * percentX;
-    const newYMin = yMin + (compH - newCompH) * (1 - percentY);
-
-    // calculate the new point in the complex plane for the top right corner of the view
-    const newXMax = newXMin + newCompW;
-    const newYMax = newYMin + newCompH;
-
-    // Update state
-    setXMin(newXMin);
-    setYMin(newYMin);
-    setXMax(newXMax);
-    setYMax(newYMax);
-    setScale(newScale);
-  };
-
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'w') {
-      const newYMin = yMin - 10 / scale;
-      setYMin(newYMin);
-    } else if (e.key === 'a') {
-      const newXMin = xMin - 10 / scale;
-      setXMin(newXMin);
-    } else if (e.key === 's') {
-      const newYMin = yMin + 10 / scale;
-      setYMin(newYMin);
-    } else if (e.key === 'd') {
-      const newXMin = xMin + 10 / scale;
-      setXMin(newXMin);
-    } else if (e.key === 'c') {
-      setColorMode((prevColorMode) => !prevColorMode);
-    } else if (e.key === 'e') {
-      handleZoom(true);
-    } else if (e.key === 'q') {
-      handleZoom(false);
-    }
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab);
   };
 
   return (
     <div className="App">
       <header className="App-header">
-        <canvas
-          id="plot"
-          ref={canvasRef}
-          tabIndex={1}
-          width={plotWidth}
-          height={plotHeight}
-          onMouseMove={(e) => {
-            const canvasView = canvasRef.current?.getBoundingClientRect();
-            if (canvasView) {
-              const mouseX = e.clientX - canvasView.left;
-              const mouseY = e.clientY - canvasView.top;
-              mouseCoordinates.current = { x: mouseX, y: mouseY };
-            }
-          }}
-          onKeyDown={(e) => handleKey(e)}
-        ></canvas>
-        <div className="controls">
-          <h1>Controls</h1>
-          <div>
-            <ul>
-              <li>Zoom in with e and zoom out with q.</li>
-              <li>Hover mouse over where you want to zoom.</li>
-              <li>Pan with wasd.</li>
-            </ul>
-          </div>
+        <div className="tabs">
+          <button
+            className={tab === 'sequential' ? 'active' : ''}
+            onClick={() => handleTabChange('sequential')}
+          >
+            Sequential
+          </button>
+          <button
+            className={tab === 'cpuparallel' ? 'active' : ''}
+            onClick={() => handleTabChange('cpuparallel')}
+          >
+            Parallel (CPU)
+          </button>
+          <button
+            className={tab === 'gpuparallel' ? 'active' : ''}
+            onClick={() => handleTabChange('gpuparallel')}
+          >
+            Parallel (GPU)
+          </button>
         </div>
+        {tab === 'sequential' ? (
+          <Sequential />
+        ) : tab === 'cpuparallel' ? (
+          <CPUParallel />
+        ) : (
+          <GPUParallel />
+        )}
       </header>
+      <div className="controls" style={{ fontSize: '300%' }}>
+        <h1>Controls</h1>
+        <div>
+          <ul style={{ listStyleType: 'disc', textAlign: 'left' }}>
+            <li>Select the canvas with left click</li>
+            <li>Hover the mouse over where you want to zoom</li>
+            <li>
+              Zoom in with <img src={keyE} alt="E key" className="key-image" />{' '}
+              and zoom out with{' '}
+              <img src={keyQ} alt="Q key" className="key-image" />
+            </li>
+            <li>
+              Pan with <img src={keyW} alt="W key" className="key-image" />
+              <img src={keyA} alt="A key" className="key-image" />
+              <img src={keyS} alt="S key" className="key-image" />
+              <img src={keyD} alt="D key" className="key-image" />
+            </li>
+            <li>
+              Toggle between color and greyscale with{' '}
+              <img src={keyC} alt="C key" className="key-image" />
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
