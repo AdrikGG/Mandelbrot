@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/Mandelbrot/static/css/main.f855e6bc.css",
-    "main.js": "/Mandelbrot/static/js/main.2a0068e9.js",
+    "main.js": "/Mandelbrot/static/js/main.a25adff2.js",
     "index.html": "/Mandelbrot/index.html",
     "main.f855e6bc.css.map": "/Mandelbrot/static/css/main.f855e6bc.css.map",
-    "main.2a0068e9.js.map": "/Mandelbrot/static/js/main.2a0068e9.js.map"
+    "main.a25adff2.js.map": "/Mandelbrot/static/js/main.a25adff2.js.map"
   },
   "entrypoints": [
     "static/css/main.f855e6bc.css",
-    "static/js/main.2a0068e9.js"
+    "static/js/main.a25adff2.js"
   ]
 }
